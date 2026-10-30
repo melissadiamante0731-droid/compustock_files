@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CompuStock Inventory</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="login-screen" class="login-screen hidden">
+  <form id="login-form" class="login-card">
+    <div class="brand login-brand">▣ CompuStock</div>
+    <h1>Welcome back</h1><p class="muted">Demo sign-in for the capstone prototype.</p>
+    <label for="login-user">Username</label><input id="login-user" autocomplete="username" required value="admin">
+    <label for="login-role">Demo role</label>
+    <select id="login-role"><option value="Admin">Admin</option><option value="Staff">Staff</option><option value="Owner">Owner</option></select>
+    <label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required value="demo123">
+    <button class="primary full-width" type="submit">Sign in</button>
+    <p class="fine-print">Prototype only: this demo sign-in is not secure authentication.</p>
+  </form>
+</div>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="brand">▣ CompuStock</div>
+    <p class="sidebar-label">WORKSPACE</p>
+    <nav>
+      <a class="nav-link active" data-page="dashboard">▦ Dashboard</a>
+      <a class="nav-link" data-page="products">▣ Products</a>
+      <a class="nav-link" data-page="suppliers">♧ Suppliers</a>
+      <a class="nav-link" data-page="inventory">⇄ Inventory</a>
+      <a class="nav-link" data-page="pos">▤ Point of Sale</a>
+      <p class="sidebar-label">MANAGEMENT</p>
+      <a class="nav-link" data-page="pricing">₱ Pricing</a>
+      <a class="nav-link" data-page="reports">▥ Reports</a>
+      <a class="nav-link" data-page="activity">◷ Activity Logs</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="profile">
+        <div class="avatar" id="user-avatar">A</div>
+        <div class="profile-info"><strong id="user-display">Admin</strong><small id="role-display">Administrator</small></div>
+      </div>
+      <button class="secondary full-width logout-button" id="logout-button">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">KENJIJAYE COMPUTER AND INTERNET CAFE</p>
+        <h1 id="page-title">Dashboard</h1>
+        <p class="subtitle">Manage computer parts inventory, suppliers, pricing, and sales.</p>
+      </div>
+      <input class="global-search" id="global-search" placeholder="Search products..." aria-label="Search products">
+    </header>
+    <div class="notice" id="notice" role="status"></div>
+
+    <section id="dashboard" class="page active">
+      <div class="banner"><h2>Welcome to CompuStock!</h2><p>Manage your computer parts, supplier information, pricing, and sales in one place.</p></div>
+      <div class="stats">
+        <article class="stat"><p>Total Products</p><h2 id="total-products">0</h2><p>Product types</p></article>
+        <article class="stat"><p>Total Stock</p><h2 id="total-stock">0</h2><p>Units available</p></article>
+        <article class="stat"><p>Recorded Sales</p><h2 id="total-sales">₱0.00</h2><p>Completed sales</p></article>
+        <article class="stat"><p>Low-Stock Items</p><h2 id="low-stock-count">0</h2><p>Need attention</p></article>
+      </div>
+      <div class="panel">
+        <div class="panel-heading"><div><h3>Inventory Overview</h3><p>Current product stock</p></div><button class="primary" onclick="showPage('products')">View Products</button></div>
+        <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Stock</th><th>Status</th></tr></thead><tbody id="inventory-overview"></tbody></table></div>
+      </div>
+      <div class="panel"><div class="panel-heading"><div><h3>Recent Sales</h3><p>Latest completed transactions</p></div><button class="secondary" onclick="showPage('reports')">View Reports</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Receipt No.</th><th>Date</th><th>Items</th><th>Total</th><th></th></tr></thead><tbody id="recent-sales"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="products" class="page">
+      <div class="panel">
+        <div class="section-header"><div><h2>Product Management</h2><p>Add and manage computer parts and accessories.</p></div><button class="primary" onclick="openProductForm()">+ Add Product</button></div>
+        <div class="filters"><input id="product-search" placeholder="Search product name, brand, or SKU..." oninput="renderProducts()"><select id="category-filter" onchange="renderProducts()"><option value="">All Categories</option><option>CPU</option><option>GPU</option><option>Motherboard</option><option>RAM</option><option>SSD/HDD</option><option>PSU</option><option>Monitor</option><option>Accessories</option></select></div>
+        <div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Cost</th><th>Selling Price</th><th>Stock</th><th>Actions</th></tr></thead><tbody id="product-table-body"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="suppliers" class="page">
+      <div class="panel">
+        <div class="section-header"><div><h2>Supplier Management</h2><p>Manage supplier details and contact information.</p></div><button class="primary" onclick="openSupplierForm()">+ Add Supplier</button></div>
+        <input id="supplier-search" placeholder="Search supplier name, contact, phone, or email..." oninput="renderSuppliers()">
+        <div class="table-wrap spaced"><table><thead><tr><th>Supplier Name</th><th>Contact Person</th><th>Phone</th><th>Email</th><th>Address</th><th>Actions</th></tr></thead><tbody id="supplier-table-body"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="inventory" class="page">
+      <div class="panel">
+        <div class="section-header"><div><h2>Stock Movements</h2><p>Record stock-in, stock-out, and stock adjustments.</p></div><button class="primary" onclick="openMovementForm()">+ Record Movement</button></div>
+        <div class="filters"><input type="date" id="movement-from" aria-label="Movement start date" onchange="renderMovements()"><input type="date" id="movement-to" aria-label="Movement end date" onchange="renderMovements()"><select id="movement-filter" onchange="renderMovements()"><option value="">All movement types</option><option>Stock In</option><option>Stock Out</option><option>Adjustment</option><option>Sale</option></select></div>
+        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Product</th><th>Type</th><th>Quantity</th><th>Stock Before</th><th>Stock After</th><th>Notes</th></tr></thead><tbody id="movement-table"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="pos" class="page">
+      <div class="pos-layout">
+        <div class="panel"><h2>Point of Sale</h2><p class="muted">Add available products to the cart to record a sale.</p><input id="pos-search" placeholder="Search products..." oninput="renderPOS()"><div class="product-grid pos-grid" id="pos-products"></div></div>
+        <div class="panel"><h3>Shopping Cart</h3><div id="cart-items"></div><div class="cart-total"><span>Total</span><strong id="cart-total">₱0.00</strong></div><button class="primary full-width" onclick="checkout()">Complete Sale</button><p class="fine-print">Stock is deducted after checkout is completed.</p></div>
+      </div>
+    </section>
+
+    <section id="pricing" class="page">
+      <div class="panel">
+        <h2>Pricing Management</h2><p class="muted">Calculate a suggested selling price using cost and markup.</p>
+        <div class="calculator-grid">
+          <div class="form-field"><label for="calc-product">Product</label><select id="calc-product" onchange="updateCalculator()"></select></div>
+          <div class="form-field"><label for="calc-cost">Unit cost (₱)</label><input id="calc-cost" type="number" min="0" step=".01" value="0" oninput="updateCalculator()"></div>
+          <div class="form-field"><label for="calc-markup">Markup (%)</label><input id="calc-markup" type="number" min="0" step=".1" value="15" oninput="updateCalculator()"></div>
+          <div class="calculator-result"><span>Suggested Retail Price (SRP)</span><strong id="calc-srp">₱0.00</strong><small id="calc-profit">Estimated gross profit: ₱0.00</small><button class="secondary" id="apply-srp" type="button">Apply to selected product</button></div>
+        </div>
+      </div>
+      <div class="panel"><div class="panel-heading"><div><h3>Current Product Pricing</h3><p>Estimated gross profit per unit = selling price − acquisition cost.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Product</th><th>Supplier</th><th>Latest Supplier Cost</th><th>Acquisition Cost</th><th>Selling Price</th><th>Gross Profit</th><th>Actions</th></tr></thead><tbody id="pricing-table"></tbody></table></div>
+      </div>
+      <div class="panel"><h3>Supplier Price History</h3><p class="muted">Record supplier quotations or purchase-price changes for a product.</p>
+        <form id="price-history-form" class="inline-form">
+          <div class="form-field"><label for="history-product">Product</label><select id="history-product" required></select></div>
+          <div class="form-field"><label for="history-supplier">Supplier</label><select id="history-supplier" required></select></div>
+          <div class="form-field"><label for="history-cost">Supplier price (₱)</label><input id="history-cost" type="number" min="0" step=".01" required></div>
+          <div class="form-field"><label for="history-date">Date</label><input id="history-date" type="date" required></div>
+          <div class="form-field"><label for="history-notes">Notes</label><input id="history-notes" placeholder="Quotation, invoice, etc."></div>
+          <button class="primary" type="submit">Save Supplier Price</button>
+        </form>
+        <div class="table-wrap spaced"><table><thead><tr><th>Date</th><th>Product</th><th>Supplier</th><th>Price</th><th>Notes</th></tr></thead><tbody id="price-history-table"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="reports" class="page">
+      <div class="panel"><h2>Reports</h2><p class="muted">Filter sales by date and export inventory, sales, and stock movement records.</p>
+        <div class="filters"><div><label for="report-from">From</label><input id="report-from" type="date"></div><div><label for="report-to">To</label><input id="report-to" type="date"></div><button class="primary" id="apply-report-filter">Apply Date Filter</button><button class="secondary" id="clear-report-filter">Clear</button></div>
+        <div class="stats report-stats"><article class="stat"><p>Transactions</p><h2 id="report-count">0</h2></article><article class="stat"><p>Sales Total</p><h2 id="report-total">₱0.00</h2></article><article class="stat"><p>Estimated Gross Profit</p><h2 id="report-profit">₱0.00</h2></article></div>
+        <div class="report-actions"><button class="primary" onclick="exportCSV('inventory')">Export Inventory CSV</button><button class="secondary" onclick="exportCSV('sales')">Export Filtered Sales CSV</button><button class="secondary" onclick="exportCSV('movements')">Export Stock Movements CSV</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Receipt No.</th><th>Date</th><th>Items</th><th>Total</th><th>Estimated Profit</th><th></th></tr></thead><tbody id="report-sales"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="activity" class="page">
+      <div class="panel"><div class="section-header"><div><h2>Activity Logs</h2><p>Recent actions recorded by this browser prototype.</p></div><button class="secondary" onclick="exportCSV('activity')">Export Logs CSV</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Date / Time</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr></thead><tbody id="activity-table"></tbody></table></div>
+      </div>
+    </section>
+
+    <footer class="footer">CompuStock Inventory · Capstone prototype</footer>
+  </main>
+</div>
+
+<!-- Product modal -->
+<div class="modal" id="product-modal"><div class="modal-content"><h2 id="product-form-title">Add Product</h2>
+<form id="product-form"><input type="hidden" id="product-id"><div class="form-grid">
+<div class="form-field full"><label for="product-name">Product Name</label><input id="product-name" required></div>
+<div class="form-field"><label for="product-sku">SKU</label><input id="product-sku" required></div><div class="form-field"><label for="product-brand">Brand</label><input id="product-brand" required></div>
+<div class="form-field"><label for="product-category-form">Category</label><select id="product-category-form" required><option value="">Select category</option><option>CPU</option><option>GPU</option><option>Motherboard</option><option>RAM</option><option>SSD/HDD</option><option>PSU</option><option>Monitor</option><option>Accessories</option></select></div>
+<div class="form-field"><label for="product-cost">Acquisition Cost (₱)</label><input id="product-cost" type="number" min="0" step=".01" required></div>
+<div class="form-field"><label for="product-price">Selling Price (₱)</label><input id="product-price" type="number" min="0" step=".01" required></div>
+<div class="form-field"><label for="product-stock">Initial Stock</label><input id="product-stock" type="number" min="0" step="1" required></div>
+<div class="form-field"><label for="product-reorder">Reorder Level</label><input id="product-reorder" type="number" min="0" step="1" value="5" required></div>
+<div class="form-field full"><label for="product-supplier">Supplier</label><select id="product-supplier"><option value="">No supplier selected</option></select></div>
+</div><div class="form-actions"><button type="button" class="secondary" onclick="closeModal('product-modal')">Cancel</button><button type="submit" class="primary">Save Product</button></div></form></div></div>
+
+<!-- Supplier modal -->
+<div class="modal" id="supplier-modal"><div class="modal-content"><h2 id="supplier-form-title">Add Supplier</h2><form id="supplier-form"><input type="hidden" id="supplier-id">
+<div class="form-field"><label for="supplier-name">Supplier Name *</label><input id="supplier-name" required></div>
+<div class="form-field"><label for="supplier-contact">Contact Person *</label><input id="supplier-contact" required></div>
+<div class="form-field"><label for="supplier-phone">Phone Number *</label><input id="supplier-phone" type="tel" required></div>
+<div class="form-field"><label for="supplier-email">Email Address *</label><input id="supplier-email" type="email" required></div>
+<div class="form-field"><label for="supplier-address">Address *</label><textarea id="supplier-address" rows="3" required></textarea></div>
+<div class="form-actions"><button type="button" class="secondary" onclick="closeModal('supplier-modal')">Cancel</button><button type="submit" class="primary">Save Supplier</button></div></form></div></div>
+
+<!-- Movement modal -->
+<div class="modal" id="movement-modal"><div class="modal-content"><h2>Record Stock Movement</h2><form id="movement-form">
+<div class="form-field"><label for="movement-product">Product</label><select id="movement-product" required></select></div>
+<div class="form-field"><label for="movement-type">Movement Type</label><select id="movement-type" required><option value="Stock In">Stock In</option><option value="Stock Out">Stock Out</option><option value="Adjustment">Adjustment (set exact stock)</option></select></div>
+<div class="form-field"><label for="movement-quantity" id="movement-quantity-label">Quantity</label><input id="movement-quantity" type="number" min="0" step="1" required></div>
+<div class="form-field"><label for="movement-notes">Notes</label><input id="movement-notes" placeholder="Optional reason or reference"></div>
+<div class="form-actions"><button type="button" class="secondary" onclick="closeModal('movement-modal')">Cancel</button><button type="submit" class="primary">Save Movement</button></div>
+</form></div></div>
+
+<!-- Receipt modal -->
+<div class="modal" id="receipt-modal"><div class="modal-content"><div id="receipt-content"></div><div class="form-actions"><button class="secondary" onclick="closeModal('receipt-modal')">Close</button><button class="primary" onclick="printReceipt()">Print Receipt</button></div></div></div>
+
+<script src="script.js"></script>
+</body>
+</html>
