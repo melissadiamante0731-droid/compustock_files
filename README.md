@@ -1,6 +1,6 @@
 # CompuStock Inventory
 
-CompuStock currently contains a browser-only prototype and a first-stage Express/MySQL backend foundation. The existing dashboard still uses browser `localStorage`; it is not yet connected to the API and must not be used as authoritative business data or as secure staff authentication.
+CompuStock contains a browser-based inventory prototype and an Express/MySQL backend. The UI has separate Kenjijaye staff and customer sides: staff sign in with the demo credentials `admin` / `demo123`, while customers can browse products and submit order requests. Staff administration and customer requests currently use browser `localStorage`; requests only appear for staff using the same browser profile. This client-side demo sign-in is visible and bypassable, and is not secure authentication or authoritative business data. The backend has separate bcrypt-verified accounts and server-side sessions, but the browser UI is not connected to them.
 The prototype has inline event handlers, so its current Content Security Policy includes an inline-script exception; remove that exception as part of frontend/API integration before production.
 
 ## Requirements
@@ -21,7 +21,7 @@ Set `SESSION_COOKIE_SECURE=true` when deploying behind HTTPS; startup refuses in
 
 The API is under `/api/v1`. `GET /api/v1/health` verifies database connectivity. `GET /api/v1/products` provides a paginated, parameterized product search. Staff sign in through `/api/v1/auth/login`; obtain a CSRF token from `/api/v1/auth/csrf` before state-changing requests and send it as `X-CSRF-Token`. Sessions are stored in MySQL.
 
-`POST /api/v1/inventory/movements` is restricted to Admin and Owner. `POST /api/v1/pos/sales` is available to Admin, Owner, and Cashier and requires an `Idempotency-Key` header. Amounts are calculated from locked database rows. Online checkout, customer accounts, refunds/voids, product administration APIs, and frontend API integration are not implemented yet.
+`POST /api/v1/inventory/movements` is restricted to Admin and Owner. `POST /api/v1/pos/sales` is available to Admin, Owner, and Cashier and requires an `Idempotency-Key` header. Amounts are calculated from locked database rows. Customer order requests in the browser are not online checkout and do not reserve stock or collect payment. Customer accounts, refunds/voids, product administration APIs, and frontend API integration are not implemented yet.
 
 ## Initial design decisions
 

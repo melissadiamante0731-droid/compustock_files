@@ -1,6 +1,8 @@
 "use strict";
 
 const $ = id => document.getElementById(id);
+const DEMO_USERNAME = "admin";
+const DEMO_PASSWORD = "demo123";
 const money = value => Number(value || 0).toLocaleString("en-PH", {style:"currency",currency:"PHP"});
 const today = () => new Date().toISOString().slice(0,10);
 const loadData = (key, fallback) => { try { const saved=localStorage.getItem(key); return saved ? JSON.parse(saved) : fallback; } catch { return fallback; } };
@@ -20,24 +22,26 @@ let movements = loadData("compustock_movements", []);
 let sales = loadData("compustock_sales", []);
 let priceHistory = loadData("compustock_price_history", []);
 let activity = loadData("compustock_activity", []);
+let orderRequests = loadData("compustock_order_requests", []);
 let cart = [];
-let currentUser = loadData("compustock_demo_user", {username:"Admin",role:"Admin"});
+let storeCart = [];
+let currentUser = null;
 let reportRange = {from:"",to:""};
 
 function saveAll(){
-  const entries = {compustock_products:products,compustock_suppliers:suppliers,compustock_movements:movements,compustock_sales:sales,compustock_price_history:priceHistory,compustock_activity:activity,compustock_demo_user:currentUser};
+  const entries = {compustock_products:products,compustock_suppliers:suppliers,compustock_movements:movements,compustock_sales:sales,compustock_price_history:priceHistory,compustock_activity:activity,compustock_order_requests:orderRequests};
   Object.entries(entries).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));
 }
 function esc(v){return String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function notify(message){const n=$("notice");n.textContent=message;n.classList.add("show");clearTimeout(notify.timer);notify.timer=setTimeout(()=>n.classList.remove("show"),3000);}
 function logAction(action,details=""){activity.unshift({date:new Date().toLocaleString(),user:currentUser.username,role:currentUser.role,action,details});activity=activity.slice(0,500);saveAll();}
-function canManage(){return currentUser.role==="Admin"||currentUser.role==="Owner";}
+function canManage(){return Boolean(currentUser&&(currentUser.role==="Admin"||currentUser.role==="Owner"));}
 function showPage(name){
  document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id===name));
  document.querySelectorAll(".nav-link").forEach(a=>a.classList.toggle("active",a.dataset.page===name));
- const titles={dashboard:"Dashboard",products:"Products",suppliers:"Suppliers",inventory:"Inventory",pos:"Point of Sale",pricing:"Pricing",reports:"Reports",activity:"Activity Logs"};
+ const titles={dashboard:"Dashboard",products:"Products",suppliers:"Suppliers",inventory:"Inventory",pos:"Point of Sale",pricing:"Pricing",reports:"Reports",activity:"Activity Logs",orders:"Customer Orders"};
  $("page-title").textContent=titles[name]||"Dashboard";
- const renderers={dashboard:renderDashboard,products:renderProducts,suppliers:renderSuppliers,inventory:renderMovements,pos:renderPOS,pricing:renderPricing,reports:renderReports,activity:renderActivity};
+ const renderers={dashboard:renderDashboard,products:renderProducts,suppliers:renderSuppliers,inventory:renderMovements,pos:renderPOS,pricing:renderPricing,reports:renderReports,activity:renderActivity,orders:renderOrderRequests};
  if(renderers[name])renderers[name]();
 }
 document.querySelectorAll(".nav-link").forEach(a=>a.addEventListener("click",()=>showPage(a.dataset.page)));
@@ -57,7 +61,7 @@ function fillProductSelect(selectId,selected=""){
  select.innerHTML=products.map(p=>`<option value="${p.id}">${esc(p.name)} (${esc(p.sku)})</option>`).join("");
  if(selected!=="")select.value=String(selected);
 }
-function renderAll(){renderDashboard();renderProducts();renderSuppliers();renderMovements();renderPricing();renderPOS();renderReports();renderActivity();}
+function renderAll(){renderDashboard();renderProducts();renderSuppliers();renderMovements();renderPricing();renderPOS();renderReports();renderActivity();renderOrderRequests();renderStoreProducts();renderStoreCart();}
 
 /* Products */
 function openProductForm(id=""){
@@ -84,6 +88,88 @@ function renderProducts(){
  const search=($("product-search").value||"").toLowerCase().trim(),cat=$("category-filter").value;
  const list=products.filter(p=>`${p.name} ${p.brand} ${p.sku}`.toLowerCase().includes(search)&&(!cat||p.category===cat));
  $("product-table-body").innerHTML=list.length?list.map(p=>`<tr><td>${esc(p.sku)}</td><td><strong>${esc(p.name)}</strong><br><small>${esc(p.brand)}</small></td><td>${esc(p.category)}</td><td>${money(p.cost)}</td><td>${money(p.price)}</td><td><span class="badge ${p.stock<=p.reorder?"low":""}">${p.stock}</span></td><td><div class="actions"><button class="secondary" onclick="openProductForm('${p.id}')">Edit</button><button class="danger" onclick="deleteProduct('${p.id}')">Delete</button></div></td></tr>`).join(""):'<tr><td colspan="7" class="empty">No products found.</td></tr>';
+}
+function showCustomerStore(){
+ currentUser=null;
+ $("login-screen").classList.add("hidden");$("app").style.display="none";
+ $("customer-store").classList.remove("portal-hidden");
+ renderStoreProducts();renderStoreCart();
+}
+function showStaffLogin(){
+ $("customer-store").classList.add("portal-hidden");
+ $("app").style.display="none";$("login-screen").classList.remove("hidden");
+}
+function renderStoreProducts(){
+ const search=($("store-search").value||"").toLowerCase().trim(),category=$("store-category").value;
+ const list=products.filter(p=>`${p.name} ${p.brand} ${p.sku}`.toLowerCase().includes(search)&&(!category||p.category===category));
+ $("store-products").innerHTML=list.length?list.map(p=>`<article class="product-card"><h3>${esc(p.name)}</h3><p>${esc(p.brand)} · ${esc(p.category)}</p><p class="store-availability">${p.stock>0?"Available":"Out of stock"}</p><div class="price">${money(p.price)}</div><button class="primary full-width store-add-button" onclick="addToStoreCart('${p.id}')" ${p.stock<1?"disabled":""}>Add to request</button></article>`).join(""):'<p class="empty">No matching products.</p>';
+}
+function addToStoreCart(id){
+ const product=products.find(p=>String(p.id)===String(id));
+ if(!product||product.stock<1)return;
+ const item=storeCart.find(i=>String(i.id)===String(id));
+ if(item){if(item.qty>=product.stock){showCustomerNotice("Requested quantity exceeds current available stock.");return;}item.qty++;}
+ else storeCart.push({id:product.id,qty:1});
+ renderStoreCart();
+}
+function changeStoreCartQty(id,change){
+ const item=storeCart.find(i=>String(i.id)===String(id)),product=products.find(p=>String(p.id)===String(id));
+ if(!item||!product)return;
+ const qty=item.qty+change;
+ if(qty<1)storeCart=storeCart.filter(i=>String(i.id)!==String(id));
+ else if(qty>product.stock)showCustomerNotice("Requested quantity exceeds current available stock.");
+ else item.qty=qty;
+ renderStoreCart();
+}
+function renderStoreCart(){
+ const total=storeCart.reduce((sum,item)=>{const p=products.find(product=>String(product.id)===String(item.id));return sum+(p?p.price*item.qty:0);},0);
+ $("store-cart-items").innerHTML=storeCart.length?storeCart.map(item=>{
+  const p=products.find(product=>String(product.id)===String(item.id));if(!p)return"";
+  return `<div class="cart-row"><div><strong>${esc(p.name)}</strong><small>${money(p.price)} each</small></div><div class="actions"><button class="secondary" type="button" aria-label="Remove one ${esc(p.name)}" onclick="changeStoreCartQty('${p.id}',-1)">−</button><span>${item.qty}</span><button class="secondary" type="button" aria-label="Add one ${esc(p.name)}" onclick="changeStoreCartQty('${p.id}',1)">+</button></div></div>`;
+ }).join(""):'<p class="muted">No items selected.</p>';
+ $("store-cart-total").textContent=money(total);
+}
+function showCustomerNotice(message){
+ const notice=$("customer-notice");notice.textContent=message;notice.classList.add("show");
+ clearTimeout(showCustomerNotice.timer);showCustomerNotice.timer=setTimeout(()=>notice.classList.remove("show"),4000);
+}
+$("store-search").addEventListener("input",renderStoreProducts);
+$("store-category").addEventListener("change",renderStoreProducts);
+$("order-request-form").addEventListener("submit",e=>{
+ e.preventDefault();
+ if(!storeCart.length){showCustomerNotice("Add at least one product to your request.");return;}
+ for(const item of storeCart){
+  const product=products.find(p=>String(p.id)===String(item.id));
+  if(!product||item.qty>product.stock){showCustomerNotice("Availability changed. Please review your requested items.");renderStoreProducts();renderStoreCart();return;}
+ }
+ const items=storeCart.map(item=>{
+  const p=products.find(product=>String(product.id)===String(item.id));
+  return {productId:p.id,name:p.name,sku:p.sku,qty:item.qty,price:p.price,lineTotal:p.price*item.qty};
+ });
+ const request={
+  id:`REQ-${Date.now()}`,date:new Date().toLocaleString(),customer:$("customer-name").value.trim(),
+  phone:$("customer-phone").value.trim(),email:$("customer-email").value.trim(),
+  notes:$("customer-notes").value.trim(),items,total:items.reduce((sum,item)=>sum+item.lineTotal,0),status:"Pending"
+ };
+ orderRequests.unshift(request);localStorage.setItem("compustock_order_requests",JSON.stringify(orderRequests));
+ storeCart=[];$("order-request-form").reset();renderStoreCart();showCustomerNotice(`Request ${request.id} submitted. Staff will contact you to confirm.`);
+});
+function renderOrderRequests(){
+ const statuses=["Pending","Contacted","Completed","Cancelled"];
+ $("order-request-table").innerHTML=orderRequests.length?orderRequests.map(request=>{
+  const items=(request.items||[]).map(item=>`${esc(item.name)} ×${Number(item.qty)||0}`).join("<br>");
+  const status=statuses.includes(request.status)?request.status:"Pending";
+  return `<tr><td><strong>${esc(request.id)}</strong><br><small>${esc(request.date)}</small></td><td>${esc(request.customer)}${request.notes?`<br><small>${esc(request.notes)}</small>`:""}</td><td>${esc(request.phone)}${request.email?`<br>${esc(request.email)}`:""}</td><td>${items||"—"}</td><td>${money(request.total)}</td><td><select aria-label="Status for ${esc(request.id)}" onchange="setOrderRequestStatus('${esc(request.id)}',this.value)">${statuses.map(option=>`<option value="${option}" ${status===option?"selected":""}>${option}</option>`).join("")}</select></td></tr>`;
+ }).join(""):'<tr><td colspan="6" class="empty">No customer requests yet.</td></tr>';
+}
+function setOrderRequestStatus(id,status){
+ if(!canManage())return;
+ const allowed=["Pending","Contacted","Completed","Cancelled"];
+ const request=orderRequests.find(item=>item.id===id);
+ if(!request||!allowed.includes(status))return;
+ request.status=status;localStorage.setItem("compustock_order_requests",JSON.stringify(orderRequests));
+ logAction("Updated customer request",`${request.id}: ${status}`);
+ renderOrderRequests();notify("Customer request status updated.");
 }
 function deleteProduct(id){
  if(!canManage()){notify("Only Admin or Owner can delete products.");return;}
@@ -172,7 +258,7 @@ function showReceipt(r){
  $("receipt-content").innerHTML=`<div class="print-area"><h2>KENJIJAYE COMPUTER AND INTERNET CAFE</h2><h3>Sales Receipt</h3><p><strong>Receipt:</strong> ${esc(r.id)}<br><strong>Date:</strong> ${esc(r.date)}<br><strong>Cashier:</strong> ${esc(r.user||"")}</p><div class="table-wrap"><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr></thead><tbody>${r.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.price)}</td><td>${money(i.lineTotal??i.price*i.qty)}</td></tr>`).join("")}</tbody></table></div><h2 class="receipt-total">TOTAL: ${money(r.total)}</h2><p class="muted">Thank you for your purchase!</p></div>`;
  openModal("receipt-modal");
 }
-function printReceipt(){const content=$("receipt-content").innerHTML,old=document.body.innerHTML;document.body.innerHTML=`<div class="print-area">${content}</div>`;window.print();document.body.innerHTML=old;location.reload();}
+function printReceipt(){window.print();}
 
 /* Pricing and supplier price history */
 function renderPricing(){
@@ -238,19 +324,47 @@ function exportCSV(type){
  a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);logAction("Exported CSV",filename);
 }
 
-/* Demo login and role-based UI. This is not production authentication. */
+function setLoginError(message=""){$("login-error").textContent=message;}
+function showAuthenticatedApp(user){
+ currentUser=user;
+ localStorage.setItem("compustock_demo_session",JSON.stringify(user));
+ $("customer-store").classList.add("portal-hidden");
+ $("login-screen").classList.add("hidden");$("app").style.display="flex";
+ updateUserUI();renderAll();
+}
 function updateUserUI(){
  $("user-display").textContent=currentUser.username;$("role-display").textContent=currentUser.role;$("user-avatar").textContent=(currentUser.username[0]||"U").toUpperCase();
- document.querySelectorAll(".nav-link").forEach(a=>{const restricted=["products","suppliers","inventory","pricing"].includes(a.dataset.page);a.style.display=(!restricted||canManage())?"block":"none";});
+ document.querySelectorAll(".nav-link").forEach(a=>{const restricted=["products","suppliers","inventory","pricing","orders"].includes(a.dataset.page);a.style.display=(!restricted||canManage())?"block":"none";});
 }
 $("login-form").addEventListener("submit",e=>{
- e.preventDefault();const username=$("login-user").value.trim(),password=$("login-password").value,role=$("login-role").value;
- if(!username||!password){alert("Enter a username and password.");return;}
- currentUser={username,role};saveAll();$("login-screen").classList.add("hidden");$("app").style.display="flex";updateUserUI();logAction("Signed in","Demo sign-in");renderAll();notify(`Signed in as ${role}.`);
+ e.preventDefault();setLoginError("");
+ const username=$("login-user").value.trim(),password=$("login-password").value;
+ if(username.toLowerCase()===DEMO_USERNAME&&password===DEMO_PASSWORD){
+  $("login-password").value="";
+  showAuthenticatedApp({username:DEMO_USERNAME,role:"Admin"});
+  return;
+ }
+ setLoginError("Invalid username or password.");
 });
-$("logout-button").addEventListener("click",()=>{$("login-screen").classList.remove("hidden");$("app").style.display="none";});
+$("logout-button").addEventListener("click",()=>{
+ currentUser=null;
+ localStorage.removeItem("compustock_demo_session");
+ $("login-password").value="";setLoginError("");
+ $("login-screen").classList.remove("hidden");$("app").style.display="none";
+});
+$("customer-entry").addEventListener("click",showCustomerStore);
+$("staff-entry").addEventListener("click",showStaffLogin);
 function initialize(){
+ localStorage.removeItem("compustock_demo_user");
  if(!Array.isArray(products))products=defaults;if(!Array.isArray(suppliers))suppliers=[];if(!Array.isArray(movements))movements=[];if(!Array.isArray(sales))sales=[];if(!Array.isArray(priceHistory))priceHistory=[];if(!Array.isArray(activity))activity=[];
- $("app").style.display="none";$("login-screen").classList.remove("hidden");updateUserUI();renderAll();
+ if(!Array.isArray(orderRequests))orderRequests=[];
+ $("customer-store").classList.add("portal-hidden");
+ const savedSession=loadData("compustock_demo_session",null);
+ if(savedSession&&savedSession.username===DEMO_USERNAME&&savedSession.role==="Admin"){
+  showAuthenticatedApp({username:DEMO_USERNAME,role:"Admin"});
+ }else{
+  localStorage.removeItem("compustock_demo_session");
+  $("app").style.display="none";$("login-screen").classList.remove("hidden");
+ }
 }
 initialize();
