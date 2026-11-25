@@ -10,14 +10,51 @@
 <div id="login-screen" class="login-screen hidden">
   <form id="login-form" class="login-card">
     <div class="brand login-brand">▣ CompuStock</div>
-    <h1>Welcome back</h1><p class="muted">Demo sign-in for the capstone prototype.</p>
-    <label for="login-user">Username</label><input id="login-user" autocomplete="username" required value="admin">
-    <label for="login-role">Demo role</label>
-    <select id="login-role"><option value="Admin">Admin</option><option value="Staff">Staff</option><option value="Owner">Owner</option></select>
-    <label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required value="demo123">
+    <h1>Welcome back</h1><p class="muted">Sign-in</p>
+    <label for="login-user">Username</label><input id="login-user" type="text" autocomplete="username" required placeholder="Enter username">
+    <label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required placeholder="Enter password">
     <button class="primary full-width" type="submit">Sign in</button>
-    <p class="fine-print">Prototype only: this demo sign-in is not secure authentication.</p>
+    <p id="login-error" class="fine-print" role="alert" aria-live="polite"></p>
+    <p class="fine-print">Sign-in for staff only. </br></br>
+      This client-side check is for demonstration only, not secure authentication.</p>
+    <button class="secondary full-width" type="button" id="customer-entry">Continue as customer</button>
   </form>
+</div>
+
+<div id="customer-store" class="customer-store portal-hidden">
+  <header class="store-header">
+    <a class="brand store-brand" href="#" aria-label="CompuStock home">▣ CompuStock</a>
+    <div><strong>KENJIJAYE COMPUTER AND INTERNET CAFE</strong><button class="secondary" id="staff-entry">Staff sign in</button></div>
+  </header>
+  <main class="store-main">
+    <section class="store-welcome">
+      <p class="eyebrow">CUSTOMER STORE</p>
+      <h1>Computer parts, made easy.</h1>
+      <p>Browse available products and send us an order request. We’ll confirm availability and payment with you.</p>
+    </section>
+    <div id="customer-notice" class="notice" role="status"></div>
+    <div class="store-layout">
+      <section>
+        <div class="section-header"><div><h2>Products</h2><p>Prices are shown in Philippine pesos.</p></div></div>
+        <div class="filters"><input id="store-search" type="search" placeholder="Search products..." aria-label="Search products"><select id="store-category" aria-label="Filter by category"><option value="">All categories</option><option>CPU</option><option>GPU</option><option>Motherboard</option><option>RAM</option><option>SSD/HDD</option><option>PSU</option><option>Monitor</option><option>Accessories</option></select></div>
+        <div id="store-products" class="product-grid store-product-grid"></div>
+      </section>
+      <aside class="panel order-panel">
+        <h2>Order request</h2>
+        <p class="muted">Items here are a request only; inventory is not reserved and no payment is collected.</p>
+        <div id="store-cart-items"></div>
+        <div class="cart-total"><span>Estimated total</span><strong id="store-cart-total">₱0.00</strong></div>
+        <form id="order-request-form">
+          <div class="form-field"><label for="customer-name">Your name</label><input id="customer-name" name="name" autocomplete="name" required maxlength="150"></div>
+          <div class="form-field"><label for="customer-phone">Phone number</label><input id="customer-phone" name="phone" type="tel" autocomplete="tel" required maxlength="50"></div>
+          <div class="form-field"><label for="customer-email">Email (optional)</label><input id="customer-email" name="email" type="email" autocomplete="email" maxlength="254"></div>
+          <div class="form-field"><label for="customer-notes">Notes (optional)</label><textarea id="customer-notes" name="notes" rows="2" maxlength="500" placeholder="Preferred pickup time, questions, etc."></textarea></div>
+          <button class="primary full-width" type="submit">Submit order request</button>
+        </form>
+        <p class="fine-print">Prototype: requests are saved only in this browser and are visible to staff on this device.</p>
+      </aside>
+    </div>
+  </main>
 </div>
 
 <div class="app" id="app">
@@ -34,6 +71,7 @@
       <a class="nav-link" data-page="pricing">₱ Pricing</a>
       <a class="nav-link" data-page="reports">▥ Reports</a>
       <a class="nav-link" data-page="activity">◷ Activity Logs</a>
+      <a class="nav-link" data-page="orders">▤ Customer Orders</a>
     </nav>
     <div class="sidebar-bottom">
       <div class="profile">
@@ -141,6 +179,13 @@
     <section id="activity" class="page">
       <div class="panel"><div class="section-header"><div><h2>Activity Logs</h2><p>Recent actions recorded by this browser prototype.</p></div><button class="secondary" onclick="exportCSV('activity')">Export Logs CSV</button></div>
         <div class="table-wrap"><table><thead><tr><th>Date / Time</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr></thead><tbody id="activity-table"></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="orders" class="page">
+      <div class="panel"><div class="section-header"><div><h2>Customer Order Requests</h2><p>Review requests submitted from the customer storefront.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Received</th><th>Customer</th><th>Contact</th><th>Requested Items</th><th>Estimate</th><th>Status</th></tr></thead><tbody id="order-request-table"></tbody></table></div>
+        <p class="fine-print">Requests are local to this browser prototype. Confirm stock, pricing, and payment with the customer before completing an order.</p>
       </div>
     </section>
 
